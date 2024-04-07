@@ -19,7 +19,10 @@ const uploadCloudinary = async(FilePath, folder, height, quality)=>{
     }
     options.resource_type = "auto";
 
-    const res = await cloudinary.uploader.upload(FilePath, options).then(()=>{
+    const res = await cloudinary.uploader.upload(FilePath, options, (error, result)=>{
+        console.log(result, error);
+    });
+    if(res){
         fs.unlink(FilePath,(error)=>{
             if (error) {
                 console.log('error while uploading file');
@@ -28,10 +31,12 @@ const uploadCloudinary = async(FilePath, folder, height, quality)=>{
                 console.log('file uploaded successfully');
             }
         })
-    });
+    }
+    
     return res;
 
-    } catch (error) {
+    } catch (e) {
+        console.log(e);
         fs.unlinkSync(FilePath); 
         return null;
     }
