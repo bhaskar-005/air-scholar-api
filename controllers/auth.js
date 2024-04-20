@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const profile = require("../model/profile");
 const otpGenerator = require("otp-generator");
 const jwt = require('jsonwebtoken');
+const { redisClient } = require("../redis/index");
 require('dotenv').config();
 
 
@@ -193,6 +194,15 @@ exports.login = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
+
+    const otpLimit = await redisClient.get(`otp-req-${email}`);
+    console.log(otpLimit);
+    if (otpLimit) {
+      return res.status(300).json({
+        message:'otp already send'
+      })
+      return
+    }
     //email validation
     const checkUserPresent = await user.findOne({ email });
     if (checkUserPresent) {
@@ -212,7 +222,7 @@ exports.sendOtp = async (req, res) => {
       email: email,
       otp:generatedOtp,
     });
-
+    await redisClient.set(`otp-req-${email}`,generatedOtp);
       return res.status(200).json({
         success: true,
         message: `OTP Sent Successfully`,

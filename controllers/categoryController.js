@@ -1,5 +1,7 @@
+const { json } = require('body-parser');
 const category = require('../model/category');
-const course = require('../model/course')
+const course = require('../model/course');
+const { redisClient } = require('../redis');
 // category creation
 exports.createCategory = async(req,res)=>{
     try {
@@ -30,8 +32,12 @@ exports.createCategory = async(req,res)=>{
 //all courses from category
 exports.showAllCategories = async (req, res) => {
 	try {
+    const cachedCategory = await redisClient.get('allCategories');
+    if (cachedCategory) {
+      return JSON.parse(cachedCategory);
+    }
 		const allCategorys = await category.find({}).select('name _id');
-        
+    await redisClient.set('allCategories',JSON.stringify(allCategorys))
 		res.status(200).json({
 			success: true,
 			data: allCategorys,
@@ -47,7 +53,6 @@ exports.showAllCategories = async (req, res) => {
 //category by id
 exports.categoryFind = async(req,res)=>{
    const {categoryId} = req.body;
-   console.log(req.body);
     try {
       const findCategory = await category
       .findById(categoryId)
@@ -69,7 +74,13 @@ exports.categoryFind = async(req,res)=>{
                success:false,
             })
         }
-        const courses = await course.find(
+        let mostEnrolled;
+        const cachedMostEnrolled = await redisClient.get("MostEnrolled");
+        if (cachedMostEnrolled) {
+          mostEnrolled = JSON.parse(cachedMostEnrolled);
+        }
+        else{
+          const courses = await course.find(
             { status: "Published" },
             {
               couresName: true,
@@ -85,7 +96,10 @@ exports.categoryFind = async(req,res)=>{
             select: 'email lastName firstName',
           });
 
-        const mostEnrolled = courses.sort((a, b) => b.studentsEnrolled.length - a.studentsEnrolled.length);
+        const mostEnrolledmap = courses.sort((a, b) => b.studentsEnrolled.length - a.studentsEnrolled.length);
+        mostEnrolled = mostEnrolledmap;
+        await redisClient.set('MostEnrolled', JSON.stringify(mostEnrolled));
+        }
         return res.status(200).json({
             message:'category found successfully',
             category:findCategory,

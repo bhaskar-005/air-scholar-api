@@ -1,6 +1,7 @@
 const mailsender = require('../utils/NodeMailer');
 const contactUs = require('../Mail-template/contactUs');
 const mailSender = require('../utils/NodeMailer');
+const { redisClient } = require('../redis');
 require('dotenv').config();
 
 exports.contectUs = async (req,res)=>{
@@ -11,6 +12,12 @@ exports.contectUs = async (req,res)=>{
             message: 'please fill required fields',
             success: false
         })
+     }
+     const  cachedData = await redisClient.get(`contect:${email}`);
+     if ( cachedData) {
+      return res.status(400).json({
+        message:`${cachedData} your message already sent.`
+      })
      }
      const emailForAdmin = await mailsender(
         process.env.ADMIN_EMAIL ,  //email
@@ -24,6 +31,7 @@ exports.contectUs = async (req,res)=>{
         contactUs(email, firstname, lastname, message, phoneNo, countrycode)
        )  
       }
+      await redisClient.setex(`contect:${email}`,240,`${firstname} ${lastname}`)
       return res.json({
         success: true,
         message: "Email send successfully",
