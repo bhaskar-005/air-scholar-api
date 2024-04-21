@@ -2,6 +2,7 @@ const course = require('../model/course');
 const user = require ('../model/user');
 const uploadCloudinary = require('../utils/Cloudinary');
 const category  = require('../model/category');
+const { redisClient } = require('../redis');
 
 exports.createCourse = async(req,res)=>{
    try {
@@ -110,6 +111,13 @@ exports.createCourse = async(req,res)=>{
 //get all courses
 exports.getAllCourses = async (req, res) => {
   try {
+    const cachedMostEnrolled =await redisClient.get("MostEnrolled");
+    if(cachedMostEnrolled){
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedMostEnrolled),
+      })
+    }
     const allCourses = await course.find(
       { status: "Published" },
       {
@@ -137,6 +145,7 @@ exports.getAllCourses = async (req, res) => {
       });
 
     const mostEnrolled = allCourses.sort((a, b) => b.studentsEnrolled.length - a.studentsEnrolled.length);
+    await redisClient.set('MostEnrolled',JSON.stringify(mostEnrolled))
     return res.status(200).json({
       success: true,
       data: mostEnrolled,
@@ -180,7 +189,7 @@ exports.getCourseDetails = async (req,res)=>{
         select: "title timeDuration description"
     }
     }).exec();
-
+   
     if (!findCourse) {
       return res.status(400).json({
         success: false,
@@ -207,12 +216,19 @@ exports.getCourseDetails = async (req,res)=>{
 exports.getFullAccessCourse = async (req,res)=>{
   try {
     const {courseId} = req.body;
+    const cachedfullCourse = await redisClient.get(`fullAccessCourse-${courseId}`);
+    if (cachedfullCourse) {
+      return res.status(200).json({
+        success: true,
+        course:JSON.parse(cachedfullCourse),
+      })
+    }
     const findCourse = await course.findOne({_id :courseId})
     .populate({
       path: 'courseContent',
       populate:'subSection',
     }).exec();
-
+    await redisClient.set(`fullAccessCourse-${courseId}`,JSON.stringify(findCourse))
     if (!findCourse) {
       return res.status(400).json({
         success: false,
