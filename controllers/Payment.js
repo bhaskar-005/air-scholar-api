@@ -13,6 +13,7 @@ const razorpayInstance = new Razorpay({
 
 exports.capturePayment = async(req,res)=>{
    const {courses} = req.body;
+   console.log(courses);
    const userId = req.User.id;
 
    if (courses.length == 0) {
@@ -49,6 +50,42 @@ exports.capturePayment = async(req,res)=>{
      } 
 
      console.log(total);
+     if (total == 0) {
+        try {
+            for(const id of courses){
+                const updateCourse = await course.findByIdAndUpdate(
+                    courses,
+                    {$push : {studentsEnrolled:userId}}
+                    ,{new:true}
+                )
+                if (!updateCourse) {
+                    return res.status(400).json({
+                        message:'course not found '
+                    })
+                }
+                //updateing the user
+                const updateUser = await user.findByIdAndUpdate(
+                    userId,
+                    {$push : {course:id}},
+                    {new:true},
+                ).populate({
+                    path:'course',
+                    populate: 'courseContent'
+                   });
+                
+             return res.status(202).json({
+                message:'user enrolled successfully',
+                success:true,
+                user: updateUser
+             })
+             }
+        } catch (error) {
+            return res.status(400).json({
+                message:'user not enrolled',
+                success:false
+             })
+        }
+     }
    }
    //now create options 
    const options={
@@ -107,14 +144,19 @@ exports.verifyPayment = async(req,res)=>{
             const updateUser = await user.findByIdAndUpdate(
                 userId,
                 {$push : {course:id}},
-                {new:true}
-            )
-         }
-         //res 
+                {new:true},
+            ).populate({
+                path:'course',
+                populate: 'courseContent'
+               });
+            
          return res.status(200).json({
             message:'user enrolled successfully',
             success:true,
+            user: updateUser
          })
+         }
+         
      } catch (error) {
         console.log(error);
         return res.status(500).json({

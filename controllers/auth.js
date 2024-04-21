@@ -194,9 +194,14 @@ exports.login = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
-
-    const otpLimit = await redisClient.get(`otp-req-${email}`);
-    console.log(otpLimit);
+    const otpLimit = await redisClient.get(`opt-Limit:${email}`);
+    if (otpLimit) {
+     return  res.status(429).json({
+      message:'wait for 40s'
+    })
+    }
+    await redisClient.setex(`opt-Limit:${email}`,40,'1');
+    
     if (otpLimit) {
       return res.status(300).json({
         message:'otp already send'
@@ -222,8 +227,7 @@ exports.sendOtp = async (req, res) => {
       email: email,
       otp:generatedOtp,
     });
-    await redisClient.set(`otp-req-${email}`,generatedOtp);
-      return res.status(200).json({
+     return res.status(200).json({
         success: true,
         message: `OTP Sent Successfully`,
       });
