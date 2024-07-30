@@ -5,14 +5,14 @@ const mailSender = async (email,title,html)=>{
     try {
         //createing transporter function
         let transporter = nodemailer.createTransport({
-            host:process.env.MAIL_HOST,
+            service:'gmail',
             auth:{
                 user: process.env.MAIL_USER,
                 pass: process.env.MAIL_PASS,
             }
         })
         const info = await transporter.sendMail({
-            from: 'AirScholar', // sender address
+            from: process.env.MAIL_USER+' AirScholar', // sender address
             to: `${email}`, // list of receivers
             subject:`${title}`, // Subject line
             html: `${html}`, // html body

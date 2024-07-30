@@ -122,6 +122,43 @@ exports.signup = async (req, res) => {
     });
   }
 };
+exports.signupUpdate = async (req, res) => {
+  try {
+    const {
+      id,
+      email,
+      password,
+    } = req.body;
+  
+  
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    //profile
+    const profileDetails = await profile.create({
+      gender: null,
+      dob: null,
+      about: null,
+      phonenumber: null,
+    });
+
+    //creating a new user
+    const newuser = await user.findById(id);
+    console.log(newuser,'userbefore');
+    newuser.password = hashedPassword;
+    console.log(newuser,'userafter');
+    newuser.save();
+    return res.status(200).json({
+      sucess: true,
+      message: "account created successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      sucess: false,
+      message: "not able to sign up..",
+    });
+  }
+};
 
 exports.login = async (req, res) => {
   try {
